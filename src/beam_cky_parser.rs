@@ -58,11 +58,9 @@ impl BeamCKYParser {
                 continue;
             }
 
-            let energy =
-                EnergyParameters::get_tetraloop_energy(sequence[i..i + 6].try_into().unwrap());
-            if let Some(energy) = energy {
-                if_tetraloops[i] = energy;
-            }
+            if_tetraloops.push(EnergyParameters::get_tetraloop_energy(
+                sequence[i..i + 6].try_into().unwrap(),
+            ));
         }
 
         // Triloops
@@ -74,11 +72,9 @@ impl BeamCKYParser {
                 continue;
             }
 
-            let energy =
-                EnergyParameters::get_triloop_energy(sequence[i..i + 5].try_into().unwrap());
-            if let Some(energy) = energy {
-                if_triloops[i] = energy;
-            }
+            if_triloops.push(EnergyParameters::get_triloop_energy(
+                sequence[i..i + 5].try_into().unwrap(),
+            ));
         }
 
         // Hexaloops
@@ -88,11 +84,9 @@ impl BeamCKYParser {
                 continue;
             }
 
-            let energy =
-                EnergyParameters::get_hexaloop_energy(sequence[i..i + 8].try_into().unwrap());
-            if let Some(energy) = energy {
-                if_hexaloops[i] = energy;
-            }
+            if_hexaloops.push(EnergyParameters::get_hexaloop_energy(
+                sequence[i..i + 8].try_into().unwrap(),
+            ));
         }
         // end of v_init_tetra_hex_tri in the original code
 
