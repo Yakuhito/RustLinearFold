@@ -4,6 +4,9 @@ use crate::{
     scores::score_external_unpaired,
 };
 use std::{collections::HashMap, time::Instant};
+
+pub const VALUE_MIN: i32 = i32::MIN;
+
 pub struct BeamCKYParser {
     pub beam_size: usize,
     pub no_sharp_turn: bool,
@@ -22,20 +25,21 @@ impl BeamCKYParser {
     pub fn parse(&self, sequence: &[RnaBase]) -> String {
         let start_time = Instant::now();
 
-        let mut number_of_states_H = 0; // hairpin
-        let mut number_of_states_P = 0; // pair
-        let mut number_of_states_M2 = 0; // two or more pairs
-        let mut number_of_states_M = 0; // one or more pairs
-        let mut number_of_states_C = 0; // combine
+        let mut number_of_states_h = 0; // hairpin
+        let mut number_of_states_p = 0; // pair
+        let mut number_of_states_m2 = 0; // two or more pairs
+        let mut number_of_states_m = 0; // one or more pairs
+        let mut number_of_states_c = 0; // combine
         let mut number_of_states_multi = 0; // multi-loop
 
         // start of initialize in the original code
-        let mut bestC: Vec<BeamState> = vec![BeamState::empty(); sequence.len()];
-        let mut bestH: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
-        let mut bestP: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
-        let mut bestM2: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
-        let mut bestM: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
-        let mut bestMulti: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
+        let mut best_c: Vec<BeamState> = vec![BeamState::empty(); sequence.len()];
+
+        let mut best_h: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
+        let mut best_p: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
+        let mut best_m2: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
+        let mut best_m: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
+        let mut best_multi: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
         // end of initialize in the original code
         let mut next_pair: Vec<Vec<Option<usize>>> = Vec::with_capacity(5);
 
@@ -97,12 +101,12 @@ impl BeamCKYParser {
 
         // start CKY decoding
         if sequence.len() > 0 {
-            bestC[0].set(-score_external_unpaired(0, 0), Manner::CEqCPlusU);
+            best_c[0].set(-score_external_unpaired(0, 0), Manner::CEqCPlusU);
         }
         if sequence.len() > 1 {
-            bestC[1].set(-score_external_unpaired(0, 1), Manner::CEqCPlusU);
+            best_c[1].set(-score_external_unpaired(0, 1), Manner::CEqCPlusU);
         }
-        number_of_states_C += 1;
+        number_of_states_c += 1;
 
         // from left to right
         for j in 0..sequence.len() {
@@ -114,33 +118,41 @@ impl BeamCKYParser {
             };
 
             // beam of H
-            // let mut beam_step_h = if let Some(h) = bestH.get(j) {
-            //     vec![h]
-            // } else {
-            //     vec![]
-            // };
-
-            // if self.beamSize > 0 && beam_step_h.len() > self.beamSize {
-            //     self.beam_prune(beam_step_h);
-            // }
+            let mut beam_step_h = &mut best_h[j];
+            if self.beam_size > 0 && beam_step_h.len() > self.beam_size {
+                self.beam_prune(&best_c, beam_step_h);
+            }
         }
 
         "yak".to_string()
     }
 
-    // pub fn beam_prune(&self, bestC: &[(i32, Manner)], beam_step: &mut Vec<(i32, Manner)>) {
-    //     let scores: Vec<(i32, usize)> = Vec::with_capacity(beam_step.len());
-    //     for item in beam_step {
-    //         let i = beam_step.0;
-    //         let cand = beam_step.1;
-    //         let k = i - 1;
-    //         let new_score = if k >= 0 && bestC.get(k).is_some() && bestC[k].0 == VALUE_MIN {
-    //             new_score = VALUE_MIN;
-    //         } else {
-    //             cand.
-    //         }
-    //     }
-    // }
+    pub fn beam_prune(&self, best_c: &[BeamState], beam_step: &mut HashMap<i32, BeamState>) -> i32 {
+        let mut scores: Vec<(i32, usize)> = Vec::with_capacity(beam_step.len());
+        for (i, candidate) in beam_step.iter() {
+            let k = i - 1;
+            let new_score = if k >= 0
+                && best_c.get(k as usize).is_some()
+                && best_c[k as usize].score == VALUE_MIN
+            {
+                VALUE_MIN
+            } else {
+                candidate.score + if k >= 0 { best_c[k as usize].score } else { 0 }
+            };
+            scores.push((new_score, *i as usize));
+        }
+
+        if scores.len() < self.beam_size {
+            return VALUE_MIN;
+        }
+
+        let no_scores = scores.len();
+        let threshold = quickselect(&mut scores, 0, no_scores - 1, no_scores - self.beam_size);
+
+        beam_step.retain(|_, candidate| candidate.score >= threshold);
+
+        threshold
+    }
 }
 
 // https://github.com/LinearFold/LinearFold/blob/c3ee9bd80c06c2fc39a7bb7ae5e77b9566227cac/src/LinearFold.h#L27-42
@@ -206,4 +218,44 @@ impl BeamState {
         self.padding_l1 = Some(padding_l1);
         self.padding_l2 = Some(padding_l2);
     }
+}
+
+// TODO: Optimize this in the future; keeping it as-is right now so that I'm confident it works
+// https://github.com/LinearFold/LinearFold/blob/c3ee9bd80c06c2fc39a7bb7ae5e77b9566227cac/src/LinearFold.cpp#L247-L267
+pub fn quickselect(scores: &mut [(i32, usize)], lower: usize, upper: usize, k: usize) -> i32 {
+    if lower == upper {
+        return scores[lower].0;
+    }
+
+    let split = quickselect_partition(scores, lower, upper);
+    let length = split - lower + 1;
+    if length == k {
+        return scores[split].0;
+    }
+    if k < length {
+        return quickselect(scores, lower, split - 1, k);
+    }
+    return quickselect(scores, split + 1, upper, k - length);
+}
+
+pub fn quickselect_partition(scores: &mut [(i32, usize)], lower: usize, upper: usize) -> usize {
+    let pivot = scores[upper].0;
+    let mut lower = lower;
+    let mut upper = upper;
+
+    while lower < upper {
+        while scores[lower].0 < pivot {
+            lower += 1;
+        }
+        while scores[upper].0 > pivot {
+            upper -= 1;
+        }
+        if scores[lower].0 == scores[upper].0 {
+            lower += 1;
+        } else if lower < upper {
+            scores.swap(lower, upper);
+        }
+    }
+
+    upper
 }
