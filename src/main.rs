@@ -22,6 +22,6 @@ fn main() {
         beam_size
     );
 
-    let parser = BeamCKYParser::new(beam_size);
+    let parser = BeamCKYParser::new(beam_size, true);
     println!("Parsed: {}", parser.parse(&sequence));
 }

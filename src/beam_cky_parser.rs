@@ -3,7 +3,7 @@ use crate::{
     rna_base::{RnaBase, NOTON},
     scores::score_external_unpaired,
 };
-use std::time::Instant;
+use std::{collections::HashMap, time::Instant};
 pub struct BeamCKYParser {
     pub beam_size: usize,
     pub no_sharp_turn: bool,
@@ -30,12 +30,12 @@ impl BeamCKYParser {
         let mut number_of_states_multi = 0; // multi-loop
 
         // start of initialize in the original code
-        let mut bestH = Vec::with_capacity(sequence.len());
-        let mut bestP = Vec::with_capacity(sequence.len());
-        let mut bestM2 = Vec::with_capacity(sequence.len());
-        let mut bestM = Vec::with_capacity(sequence.len());
-        let mut bestC = Vec::with_capacity(sequence.len());
-        let mut bestMulti = Vec::with_capacity(sequence.len());
+        let mut bestC: Vec<BeamState> = vec![BeamState::empty(); sequence.len()];
+        let mut bestH: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
+        let mut bestP: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
+        let mut bestM2: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
+        let mut bestM: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
+        let mut bestMulti: Vec<HashMap<i32, BeamState>> = vec![HashMap::new(); sequence.len()];
         // end of initialize in the original code
         let mut next_pair: Vec<Vec<Option<usize>>> = Vec::with_capacity(5);
 
@@ -97,10 +97,10 @@ impl BeamCKYParser {
 
         // start CKY decoding
         if sequence.len() > 0 {
-            bestC.push((-score_external_unpaired(0, 0), Manner::CEqCPlusU));
+            bestC[0].set(-score_external_unpaired(0, 0), Manner::CEqCPlusU);
         }
-        if sequence.len() > 0 {
-            bestC.push((-score_external_unpaired(0, 1), Manner::CEqCPlusU));
+        if sequence.len() > 1 {
+            bestC[1].set(-score_external_unpaired(0, 1), Manner::CEqCPlusU);
         }
         number_of_states_C += 1;
 
@@ -144,6 +144,8 @@ impl BeamCKYParser {
 }
 
 // https://github.com/LinearFold/LinearFold/blob/c3ee9bd80c06c2fc39a7bb7ae5e77b9566227cac/src/LinearFold.h#L27-42
+
+#[derive(Clone, Debug)]
 pub enum Manner {
     None,              // 0: empty
     H,                 // 1: hairpin candidate
@@ -161,6 +163,7 @@ pub enum Manner {
     CEqCPlusP,         // 13: C = C + P
 }
 
+#[derive(Clone, Debug)]
 pub struct BeamState {
     pub score: i32,
     pub manner: Manner,
