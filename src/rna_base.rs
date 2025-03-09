@@ -53,6 +53,21 @@ impl RnaBase {
             _ => None,
         }
     }
+
+    // pairs: 0:NP 1:CG 2:GC 3:GU 4:UG 5:AU 6:UA 7:NN
+    // #define NUC_TO_PAIR(x,y) (x==1? (y==4?5:0) : (x==2? (y==3?1:0) : (x==3 ? (y==2?2:(y==4?3:0)) : (x==4 ? (y==3?4:(y==1?6:0)) : 0))))
+    pub fn to_pair_int(&self, other: RnaBase) -> usize {
+        match (self, other) {
+            (RnaBase::N, RnaBase::N) => 7,
+            (RnaBase::U, RnaBase::A) => 6,
+            (RnaBase::A, RnaBase::U) => 5,
+            (RnaBase::U, RnaBase::G) => 4,
+            (RnaBase::G, RnaBase::U) => 3,
+            (RnaBase::G, RnaBase::C) => 2,
+            (RnaBase::C, RnaBase::G) => 1,
+            _ => 0,
+        }
+    }
 }
 
 #[macro_export]

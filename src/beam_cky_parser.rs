@@ -1,7 +1,7 @@
 use crate::{
     energy_parameters::EnergyParameters,
     rna_base::{RnaBase, NOTON},
-    scores::score_external_unpaired,
+    scores::{score_external_unpaired, score_hairpin},
 };
 use std::{collections::HashMap, time::Instant};
 
@@ -48,10 +48,14 @@ impl BeamCKYParser {
             let mut next = None;
             let mut j = sequence.len() - 1;
 
-            while j >= 0 {
+            loop {
                 current_next_pair_vec.push(next);
                 if RnaBase::from_int(nuci).unwrap().can_pair_with(sequence[j]) {
                     next = Some(j);
+                }
+
+                if j == 0 {
+                    break;
                 }
                 j -= 1;
             }
@@ -120,7 +124,58 @@ impl BeamCKYParser {
             // beam of H
             let mut beam_step_h = &mut best_h[j];
             if self.beam_size > 0 && beam_step_h.len() > self.beam_size {
-                self.beam_prune(&best_c, beam_step_h);
+                println!(
+                    "Beam pruning H with scores: {:?}",
+                    beam_step_h
+                        .iter()
+                        .map(|(_k, v)| v.score)
+                        .collect::<Vec<_>>()
+                );
+                let threshold = self.beam_prune(&best_c, beam_step_h);
+                println!(
+                    "Beam pruned H with threshold={:}; new scores: {:?}",
+                    threshold,
+                    beam_step_h
+                        .iter()
+                        .map(|(_k, v)| v.score)
+                        .collect::<Vec<_>>()
+                );
+            }
+
+            let mut jnext = next_pair[nucj.to_int()][j];
+            if self.no_sharp_turn {
+                while jnext.is_some() && jnext.unwrap() - j < 4 {
+                    jnext = next_pair[nucj.to_int()][jnext.unwrap()];
+                }
+            }
+
+            if let Some(jnext) = jnext {
+                let nucjnext = RnaBase::from_int(nucj.to_int()).unwrap();
+                let nucjnext_1 = RnaBase::from_int(nucj.to_int() - 1);
+
+                let tetra_hex_tri = if jnext - j - 1 == 4 {
+                    // 6:tetra
+                    if_tetraloops[j]
+                } else if jnext - j - 1 == 6 {
+                    // 8: hexa
+                    if_hexaloops[j]
+                } else if jnext - j - 1 == 3 {
+                    // 5: tri
+                    if_triloops[j]
+                } else {
+                    None
+                };
+                let new_score =
+                    -score_hairpin(j, jnext, nucj, nucj1, nucjnext_1, nucjnext, tetra_hex_tri);
+
+                if best_h[jnext][&(j as i32)].score < new_score {
+                    if let Some(v) = best_h[jnext].get_mut(&(j as i32)) {
+                        v.set(new_score, Manner::H);
+                    } else {
+                        best_h[jnext].insert(j as i32, BeamState::new(new_score, Manner::H));
+                    }
+                }
+                number_of_states_h += 1;
             }
         }
 
@@ -157,7 +212,7 @@ impl BeamCKYParser {
 
 // https://github.com/LinearFold/LinearFold/blob/c3ee9bd80c06c2fc39a7bb7ae5e77b9566227cac/src/LinearFold.h#L27-42
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub enum Manner {
     None,              // 0: empty
     H,                 // 1: hairpin candidate
@@ -175,7 +230,7 @@ pub enum Manner {
     CEqCPlusP,         // 13: C = C + P
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct BeamState {
     pub score: i32,
     pub manner: Manner,

@@ -355,3 +355,5 @@ pub const DANGLE3_37: [[i32; 5]; NBPAIRS + 1] = [
     [-50, -80, -50, -80, -60],    // UA
     [-10, -70, -10, -70, -10],    // NN
 ];
+
+pub const TerminalAU37: i32 = 50; // lhuang: outermost pair is AU or GU; also used in tetra_loop triloop
