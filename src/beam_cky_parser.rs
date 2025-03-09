@@ -1,4 +1,7 @@
-use crate::rna_base::{RnaBase, NOTON};
+use crate::{
+    energy_parameters::EnergyParameters,
+    rna_base::{RnaBase, NOTON},
+};
 use std::time::Instant;
 pub struct BeamCKYParser {
     pub beam_size: usize,
@@ -48,39 +51,49 @@ impl BeamCKYParser {
         }
 
         // start of v_init_tetra_hex_tri in the original code
-        /*
-            // TetraLoops
-        if_tetraloops.resize(seq_length-5<0?0:seq_length-5, -1);
-        for (int i = 0; i < seq_length-5; ++i) {
-            if (!(seq[i] == 'C' && seq[i+5] == 'G'))
+        // Tetraloops
+        let mut if_tetraloops = Vec::with_capacity(sequence.len() - 5);
+        for i in 0..sequence.len() - 5 {
+            if !(sequence[i] == RnaBase::C && sequence[i + 5] == RnaBase::G) {
                 continue;
-            char *ts;
-            if ((ts=strstr(Tetraloops, seq.substr(i,6).c_str())))
-                if_tetraloops[i] = (ts - Tetraloops)/7;
+            }
+
+            let energy =
+                EnergyParameters::get_tetraloop_energy(sequence[i..i + 6].try_into().unwrap());
+            if let Some(energy) = energy {
+                if_tetraloops[i] = energy;
+            }
         }
 
         // Triloops
-        if_triloops.resize(seq_length-4<0?0:seq_length-4, -1);
-        for (int i = 0; i < seq_length-4; ++i) {
-            if (!((seq[i] == 'C' && seq[i+4] == 'G') || (seq[i] == 'G' && seq[i+4] == 'C')))
+        let mut if_triloops = Vec::with_capacity(sequence.len() - 4);
+        for i in 0..sequence.len() - 4 {
+            if !((sequence[i] == RnaBase::C && sequence[i + 4] == RnaBase::G)
+                || (sequence[i] == RnaBase::G && sequence[i + 4] == RnaBase::C))
+            {
                 continue;
-            char *ts;
-            if ((ts=strstr(Triloops, seq.substr(i,5).c_str())))
-                if_triloops[i] = (ts - Triloops)/6;
+            }
+
+            let energy =
+                EnergyParameters::get_triloop_energy(sequence[i..i + 5].try_into().unwrap());
+            if let Some(energy) = energy {
+                if_triloops[i] = energy;
+            }
         }
 
         // Hexaloops
-        if_hexaloops.resize(seq_length-7<0?0:seq_length-7, -1);
-        for (int i = 0; i < seq_length-7; ++i) {
-            if (!(seq[i] == 'A' && seq[i+7] == 'U'))
+        let mut if_hexaloops = Vec::with_capacity(sequence.len() - 7);
+        for i in 0..sequence.len() - 7 {
+            if !(sequence[i] == RnaBase::A && sequence[i + 7] == RnaBase::U) {
                 continue;
-            char *ts;
-            if ((ts=strstr(Hexaloops, seq.substr(i,8).c_str())))
-                if_hexaloops[i] = (ts - Hexaloops)/9;
-        }
-            */
-        let mut if_tetraloops = Vec::with_capacity(sequence.len() - 5);
+            }
 
+            let energy =
+                EnergyParameters::get_hexaloop_energy(sequence[i..i + 8].try_into().unwrap());
+            if let Some(energy) = energy {
+                if_hexaloops[i] = energy;
+            }
+        }
         // end of v_init_tetra_hex_tri in the original code
 
         "yak".to_string()
