@@ -1,6 +1,8 @@
 // Energy parameters from ViennaRNA
 // Taken directly from LinearFold: https://github.com/LinearFold/LinearFold/blob/master/src/Utils/energy_parameter.h#L14
 
+use crate::{rna_base::RnaBase, rna_base_sequence_matches};
+
 pub const VIE_INF: i32 = 10000000; // Same as in Vienna
 pub const NBPAIRS: usize = 7; // NP CG GC GU UG AU UA NN
 
@@ -14,19 +16,50 @@ pub const NINIO37: i32 = 60;
 pub const TERMINAL_AU37: i32 = 50;
 
 // Special loops
-pub const TRILOOPS: [&str; 2] = ["CAACG", "GUUAC"];
-pub const TRILOOP37: [i32; 2] = [680, 690];
+pub struct EnergyParameters {}
 
-pub const TETRALOOPS: [&str; 16] = [
-    "CAACGG", "CCAAGG", "CCACGG", "CCCAGG", "CCGAGG", "CCGCGG", "CCUAGG", "CCUCGG", "CUAAGG",
-    "CUACGG", "CUCAGG", "CUCCGG", "CUGCGG", "CUUAGG", "CUUCGG", "CUUUGG",
-];
-pub const TETRALOOP37: [i32; 16] = [
-    550, 330, 370, 340, 350, 360, 370, 250, 360, 280, 370, 270, 280, 350, 370, 370,
-];
+impl EnergyParameters {
+    pub const TRILOOPS: [&str; 2] = ["CAACG", "GUUAC"];
+    pub const TRILOOP37: [i32; 2] = [680, 690];
+    pub fn get_triloop_energy(sequence: [RnaBase; 5]) -> Option<i32> {
+        for (i, &pattern) in EnergyParameters::TRILOOPS.iter().enumerate() {
+            if rna_base_sequence_matches!(&sequence, pattern) {
+                return Some(EnergyParameters::TRILOOP37[i]);
+            }
+        }
 
-pub const HEXALOOPS: [&str; 4] = ["ACAGUACU", "ACAGUGAU", "ACAGUGCU", "ACAGUGUU"];
-pub const HEXALOOP37: [i32; 4] = [280, 360, 290, 180];
+        None
+    }
+
+    pub const TETRALOOPS: [&str; 16] = [
+        "CAACGG", "CCAAGG", "CCACGG", "CCCAGG", "CCGAGG", "CCGCGG", "CCUAGG", "CCUCGG", "CUAAGG",
+        "CUACGG", "CUCAGG", "CUCCGG", "CUGCGG", "CUUAGG", "CUUCGG", "CUUUGG",
+    ];
+    pub const TETRALOOP37: [i32; 16] = [
+        550, 330, 370, 340, 350, 360, 370, 250, 360, 280, 370, 270, 280, 350, 370, 370,
+    ];
+    pub fn get_tetraloop_energy(sequence: [RnaBase; 6]) -> Option<i32> {
+        for (i, &pattern) in EnergyParameters::TETRALOOPS.iter().enumerate() {
+            if rna_base_sequence_matches!(&sequence, pattern) {
+                return Some(EnergyParameters::TETRALOOP37[i]);
+            }
+        }
+
+        None
+    }
+
+    pub const HEXALOOPS: [&str; 4] = ["ACAGUACU", "ACAGUGAU", "ACAGUGCU", "ACAGUGUU"];
+    pub const HEXALOOP37: [i32; 4] = [280, 360, 290, 180];
+    pub fn get_hexaloop_energy(sequence: [RnaBase; 8]) -> Option<i32> {
+        for (i, &pattern) in EnergyParameters::HEXALOOPS.iter().enumerate() {
+            if rna_base_sequence_matches!(&sequence, pattern) {
+                return Some(EnergyParameters::HEXALOOP37[i]);
+            }
+        }
+
+        None
+    }
+}
 
 // Stack energies
 pub const STACK37: [[i32; NBPAIRS + 1]; NBPAIRS + 1] = [

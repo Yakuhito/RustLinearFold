@@ -7,6 +7,8 @@ pub enum RnaBase {
     N,
 }
 
+pub const NOTON: usize = 5; // # values in RnaBase
+
 impl RnaBase {
     pub fn from_char(c: char) -> Option<RnaBase> {
         match c {
@@ -50,5 +52,35 @@ impl RnaBase {
             4 => Some(RnaBase::U),
             _ => None,
         }
+    }
+}
+
+#[macro_export]
+macro_rules! rna_base_sequence_matches {
+    ($sequence:expr, $pattern:expr) => {{
+        let pattern_bases: Vec<RnaBase> = $pattern
+            .chars()
+            .map(|c| RnaBase::from_char(c).unwrap())
+            .collect();
+        $sequence == &pattern_bases[..]
+    }};
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rna_base_sequence_matches() {
+        let sequence = vec![
+            RnaBase::C,
+            RnaBase::A,
+            RnaBase::A,
+            RnaBase::C,
+            RnaBase::G,
+            RnaBase::G,
+        ];
+        assert!(rna_base_sequence_matches!(&sequence, "CAACGG"));
+        assert!(!rna_base_sequence_matches!(&sequence, "CAACGU"));
     }
 }
