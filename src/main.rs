@@ -1,6 +1,8 @@
+use beam_cky_parser::BeamCKYParser;
 use rna_base::RnaBase;
 
 mod beam_cky_parser;
+mod energy_parameters;
 mod rna_base;
 
 fn main() {
@@ -18,4 +20,7 @@ fn main() {
         sequence.len(),
         beam_size
     );
+
+    let parser = BeamCKYParser::new(beam_size);
+    println!("Parsed: {}", parser.parse(&sequence));
 }
