@@ -4,6 +4,7 @@ use rna_base::RnaBase;
 mod beam_cky_parser;
 mod energy_parameters;
 mod rna_base;
+mod scores;
 
 fn main() {
     println!("RustLinearFold v0.1.0");
